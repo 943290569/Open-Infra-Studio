@@ -1,0 +1,42 @@
+name: Windows plugin compatibility 2026.46
+on:
+  push:
+    branches:
+      - fix/ocs-2026-46-wire-schema
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99.1"
+      - name: Resolve host v2026.46 dependency
+        shell: pwsh
+        run: |
+          cargo update -p ocs_plugin_api
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build GIS plugin
+        shell: pwsh
+        run: |
+          cargo build --release -p open-infra
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target/release/open_infra.dll dist/openaec.open-infra-windows-x86_64.dll
+      - name: Build Civil plugin
+        shell: pwsh
+        run: |
+          cargo build --release -p open-infra-civiel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist/civil | Out-Null
+          Copy-Item target/release/open_infra_civiel.dll dist/civil/
+      - name: Upload experimental Windows DLLs
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-infra-windows-host-2026-46-experimental
+          path: dist/
